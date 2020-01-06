@@ -9,7 +9,7 @@ To cite this repo for publication:
   year = {2019},
   publisher = {GitHub},
   journal = {GitHub repository},
-  howpublished = {\url{###}},
+  howpublished = {\url{https://github.com/beedrill/cloud_rltl}},
 }
 ```
 

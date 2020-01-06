@@ -2,19 +2,27 @@ import gym
 import math
 import random
 import numpy as np
-from collections import namedtuple
 from itertools import count
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from utils import DQN, ReplayMemory
+from utils import DQN, ReplayMemory, Transition, evaluate_episode, create_saving_folder
 
+#################parsing arguments#####################################
 import argparse
 parser = argparse.ArgumentParser(description='Run Q learning for cloud rltl')
 parser.add_argument('--visual', action='store_true', help='use visualization')
+parser.add_argument('--lr', action='store', default=0.99, type=float, help='specify learning rate, default is 0.99')
+parser.add_argument('--epsilon_start', action='store', default=0.1, type=float, help='exploration rate at beginning of the training, default is 0.1')
+parser.add_argument('--epsilon_end', action='store', default=0.001, type=float, help='exploration rate at end of the training, default is 0.001')
+parser.add_argument('--epsilon_decay', action='store', default=100000, type=int, help='number of steps that epsilon reaches epsilon_end, default is 100,000')
+parser.add_argument('--target_update', action='store', default=100, type=int, help='number of steps for targets to update, default is 2')
+parser.add_argument('--gamma', action='store', default=0.99, type=float, help='reward decay factor, default is 0.99')
+parser.add_argument('--model_name', action='store', default='DRL', type=str, help='the name of the run, default is DQN')
 cmd_args = parser.parse_args()
+#######################################################################
 
 import gym
 import gym_trafficlight
@@ -31,6 +39,7 @@ env = TrafficParameterSetWrapper(env, args)
 
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print('checking device... the computation device used in the training is: ' + str(device))
 
 ######################################################################
 # Replay Memory
@@ -53,9 +62,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #    method for selecting a random batch of transitions for training.
 #
 
-Transition = namedtuple('Transition',
-                        ('state', 'action', 'next_state', 'reward'))
 
+saving_folder = create_saving_folder(cmd_args.model_name, cmd_args)
 env.reset()
 
 ######################################################################
@@ -82,27 +90,27 @@ env.reset()
 
 BATCH_SIZE = 128
 GAMMA = 0.99
-EPS_START = 0.1
-EPS_END = 0.001
-EPS_DECAY = 50
-TARGET_UPDATE = 10
+EPS_START = cmd_args.epsilon_start
+EPS_END = cmd_args.epsilon_end
+EPS_DECAY = cmd_args.epsilon_decay
+TARGET_UPDATE = cmd_args.target_update
 
 # Get screen size so that we can initialize layers correctly based on shape
 # returned from AI gym. Typical dimensions at this point are close to 3x40x90
 # which is the result of a clamped and down-scaled render buffer in get_screen()
 
 screen_height, screen_width = env.observation_space.shape
-# print(screen_width,screen_height)
-
+# for traffic env, the height and width are not really screen size, but we use the traditional denotation
+print('the size of env is: ' + str(screen_width) + ', ' + str(screen_height))
 # Get number of actions from gym action space
 n_actions = env.action_space.n
-
+print('the size of action is: ' + str(n_actions))
 policy_net = DQN(screen_height, screen_width, n_actions).to(device)
 target_net = DQN(screen_height, screen_width, n_actions).to(device)
-target_net.load_state_dict(policy_net.state_dict())
-target_net.eval()
+target_net.load_state_dict(policy_net.state_dict()) # copy the policy net param to target net
+target_net.eval() #set target network in evaluation mode
 
-optimizer = optim.RMSprop(policy_net.parameters())
+optimizer = optim.RMSprop(policy_net.parameters(), lr = cmd_args.lr)
 memory = ReplayMemory(10000)
 
 
@@ -114,7 +122,7 @@ def select_action(state):
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
         math.exp(-1. * steps_done / EPS_DECAY)
-    steps_done += 1
+    # steps_done += 1
     if sample > eps_threshold:
         with torch.no_grad():
             # t.max(1) will return largest column value of each row.
@@ -160,18 +168,18 @@ def optimize_model():
     # Compute a mask of non-final states and concatenate the batch elements
     # (a final state would've been the one after which simulation ended)
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=device, dtype=torch.bool)
+                                          batch.next_state)), device=device, dtype=torch.bool).to(device)
     
     # print("non_final_mask:",non_final_mask)
     non_final_next_states = torch.cat([s for s in batch.next_state
-                                                if s is not None])
+                                                if s is not None]).to(device)
     # print("non_final_next_states", non_final_next_states)
     # print("non_final_next_states shape", non_final_next_states.shape)
     # (batch_size, state_h, state_w)
-    state_batch  = torch.cat(batch.state)
+    state_batch  = torch.cat(batch.state).to(device)
     # print(state_batch.shape)
-    action_batch = torch.cat(batch.action)
-    reward_batch = torch.cat(batch.reward)
+    action_batch = torch.cat(batch.action).to(device)
+    reward_batch = torch.cat(batch.reward).to(device)
     # print("reward batch:", reward_batch.shape)
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
@@ -218,22 +226,26 @@ def optimize_model():
 # duration improvements.
 #
 
+
 num_episodes = 150
 state = env.reset()
-print("Initial State")
-print(state)
+#print("Initial State")
+#print(state)
 
 for i_episode in range(num_episodes):
     # Initialize the environment and state
     env.reset()
-    print("episode:", i_episode)
+    
+    episode_record = [] # use this to record temporarily for one episode
     # for t in count():
-    for t in range(1000):
+    for t in range(2999):
+        steps_done += 1
         # Select and perform an action
         # print(state.shape)
-        action = select_action(torch.tensor(state))
+        action = select_action(torch.tensor(state).to(device))
         # print(action.item())
         next_state, reward, terminal, _ = env.step([action.item()])
+        episode_record.append((next_state, reward))
         # print(next_state.shape)
         reward = torch.tensor([reward], device=device)
         # Store the transition in memory
@@ -247,10 +259,12 @@ for i_episode in range(num_episodes):
             print('terminal')
             episode_durations.append(t + 1)
             break
-    # Update the target network, copying all weights and biases in DQN
-    if i_episode % TARGET_UPDATE == 0:
-        target_net.load_state_dict(policy_net.state_dict())
-    torch.save(target_net.state_dict(),'params/net_params_%d.pkl'%(i_episode))
+        # Update the target network, copying all weights and biases in DQN
+        if steps_done % TARGET_UPDATE == 0:
+            target_net.load_state_dict(policy_net.state_dict())
+    average_reward = evaluate_episode(episode_record)
+    print("episode:", i_episode, 'average reward:', average_reward)
+    torch.save(target_net.state_dict(),saving_folder+'/net_params_%d.pkl'%(i_episode)) ## TODO: make more flexible model saving
 
 print('Complete')
 

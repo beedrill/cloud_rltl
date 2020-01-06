@@ -26,11 +26,12 @@ print(args)
 env = gym.make('TrafficLight-v0')
 env = TrafficParameterSetWrapper(env, args)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 screen_height, screen_width = env.observation_space.shape
 n_actions = env.action_space.n
 target_net = DQN(screen_height, screen_width, n_actions).to(device)
-target_net.load_state_dict(torch.load('params/net_params_100.pkl'))
+target_net.load_state_dict(torch.load('params/net_params_149.pkl'))
 
 itr = 0
 state = env.reset()
