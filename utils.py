@@ -33,13 +33,13 @@ class DQN(nn.Module):
 
     def __init__(self, h, w, outputs):
         super(DQN, self).__init__()
-        self.conv1 = nn.Linear(10,1024)
+        self.conv1 = nn.Linear(10,512)
         # self.bn1 = nn.BatchNorm1d(1568)
-        self.conv2 = nn.Linear(1024,128)
+        self.conv2 = nn.Linear(512,512)
         # self.bn2 = nn.BatchNorm1d(100)
-        self.conv3 = nn.Linear(128,32)
+        self.conv3 = nn.Linear(512,512)
         # self.bn3 = nn.BatchNorm1d(30)
-        self.head  = nn.Linear(32,outputs)
+        self.head  = nn.Linear(512,outputs)
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).

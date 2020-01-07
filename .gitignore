@@ -3,3 +3,6 @@ params/*
 
 # exception to the rule
 !params/.gitkeep 
+
+#python
+*.pyc

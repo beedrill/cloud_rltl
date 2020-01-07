@@ -14,13 +14,16 @@ from utils import DQN, ReplayMemory, Transition, evaluate_episode, create_saving
 import argparse
 parser = argparse.ArgumentParser(description='Run Q learning for cloud rltl')
 parser.add_argument('--visual', action='store_true', help='use visualization')
-parser.add_argument('--lr', action='store', default=0.99, type=float, help='specify learning rate, default is 0.99')
-parser.add_argument('--epsilon_start', action='store', default=0.1, type=float, help='exploration rate at beginning of the training, default is 0.1')
+parser.add_argument('--no_normalize_reward', action='store_true', help='do not normalize reward')
+parser.add_argument('--lr', action='store', default=0.0001, type=float, help='specify learning rate, default is 0.001')
+parser.add_argument('--epsilon_start', action='store', default=0.5, type=float, help='exploration rate at beginning of the training, default is 0.1')
 parser.add_argument('--epsilon_end', action='store', default=0.001, type=float, help='exploration rate at end of the training, default is 0.001')
 parser.add_argument('--epsilon_decay', action='store', default=100000, type=int, help='number of steps that epsilon reaches epsilon_end, default is 100,000')
-parser.add_argument('--target_update', action='store', default=100, type=int, help='number of steps for targets to update, default is 2')
+parser.add_argument('--target_update', action='store', default=3000, type=int, help='number of steps for targets to update, default is 2')
 parser.add_argument('--gamma', action='store', default=0.99, type=float, help='reward decay factor, default is 0.99')
 parser.add_argument('--model_name', action='store', default='DRL', type=str, help='the name of the run, default is DQN')
+parser.add_argument('--replay_memory_size', action='store', default=200000, type=int, help='memory replay buffer size')
+parser.add_argument('--batch_size', action='store', default=32, type=int, help='mini batch size')
 cmd_args = parser.parse_args()
 #######################################################################
 
@@ -31,6 +34,9 @@ from gym_trafficlight.wrappers import  TrafficParameterSetWrapper
 args = TrafficEnv.get_default_init_parameters()
 if cmd_args.visual:
   args['visual'] = True
+args['reward_present_form'] = 'reward' # we use reward as opposed to penalty
+if cmd_args.no_normalize_reward:
+  args['normalize_reward'] = False
 env = gym.make('TrafficLight-v0')
 env = TrafficParameterSetWrapper(env, args)
 
@@ -88,8 +94,8 @@ env.reset()
 #    episode.
 #
 
-BATCH_SIZE = 128
-GAMMA = 0.99
+BATCH_SIZE = cmd_args.batch_size
+GAMMA = cmd_args.gamma
 EPS_START = cmd_args.epsilon_start
 EPS_END = cmd_args.epsilon_end
 EPS_DECAY = cmd_args.epsilon_decay
@@ -110,8 +116,9 @@ target_net = DQN(screen_height, screen_width, n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict()) # copy the policy net param to target net
 target_net.eval() #set target network in evaluation mode
 
-optimizer = optim.RMSprop(policy_net.parameters(), lr = cmd_args.lr)
-memory = ReplayMemory(10000)
+#optimizer = optim.RMSprop(policy_net.parameters(), lr = cmd_args.lr)
+optimizer = optim.Adam(policy_net.parameters(), lr = cmd_args.lr)
+memory = ReplayMemory(cmd_args.replay_memory_size)
 
 
 steps_done = 0
@@ -128,7 +135,9 @@ def select_action(state):
             # t.max(1) will return largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
-            return policy_net(state).max(1)[1].view(1, 1)
+            actions = policy_net(state)
+            # print (actions)
+            return actions.max(1)[1].view(1, 1)
     else:
         return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
 
@@ -167,28 +176,26 @@ def optimize_model():
     # print("batch", batch)
     # Compute a mask of non-final states and concatenate the batch elements
     # (a final state would've been the one after which simulation ended)
-    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=device, dtype=torch.bool).to(device)
+    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=device, dtype=torch.bool).to(device)
     
-    # print("non_final_mask:",non_final_mask)
+    #print("non_final_mask:",non_final_mask)
     non_final_next_states = torch.cat([s for s in batch.next_state
                                                 if s is not None]).to(device)
-    # print("non_final_next_states", non_final_next_states)
-    # print("non_final_next_states shape", non_final_next_states.shape)
+    #print("non_final_next_states", non_final_next_states)
+    #print("non_final_next_states shape", non_final_next_states.shape)
     # (batch_size, state_h, state_w)
     state_batch  = torch.cat(batch.state).to(device)
-    # print(state_batch.shape)
     action_batch = torch.cat(batch.action).to(device)
     reward_batch = torch.cat(batch.reward).to(device)
-    # print("reward batch:", reward_batch.shape)
+    #print("reward batch:", reward_batch.shape)
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
-    # print("state batch shape:",state_batch.shape)
-    # print("action_batch:", action_batch)
-    # print("unsqueeze:",action_batch.unsqueeze(1))
+    #print("state batch shape:",state_batch.shape)
+    #print("action_batch:", action_batch)
+    #print("unsqueeze:",action_batch.unsqueeze(1))
     state_action_values = policy_net(state_batch).gather(1, action_batch.unsqueeze(1))
-    # print("state action values:",state_action_values)
+    #print("state action values:",state_action_values)
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
     # on the "older" target_net; selecting their best reward with max(1)[0].
@@ -196,20 +203,22 @@ def optimize_model():
     # state value or 0 in case the state was final.
     next_state_values = torch.zeros(BATCH_SIZE, device=device)
     next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
-    # print("next_state_values:", next_state_values.shape)
+    #print("next_state_values:", next_state_values.shape)
     # Compute the expected Q values
     expected_state_action_values = (next_state_values.view(BATCH_SIZE,1) * GAMMA) + reward_batch
-    # print("state action values size:",state_action_values.shape)
-    # print("expected state action values:",expected_state_action_values)
-    # print("expected state action values size:", expected_state_action_values.unsqueeze(1)[:,:,0].shape)
+    #print("state action values size:",state_action_values.shape)
+    #print("expected state action values:",expected_state_action_values)
+    #print("expected state action values size:", expected_state_action_values.unsqueeze(1)[:,:,0].shape)
     # Compute Huber loss
     loss = F.smooth_l1_loss(state_action_values.view(BATCH_SIZE,1), expected_state_action_values.unsqueeze(1).view(BATCH_SIZE,1).float())
-    # print("loss",loss)
+    #print("loss",loss)
+    #input('press to continue')
     # Optimize the model
     optimizer.zero_grad()
     loss.backward()
-    for param in policy_net.parameters():
-        param.grad.data.clamp_(-1, 1)
+    
+    # for param in policy_net.parameters():
+    #     param.grad.data.clamp_(-1, 1)
     optimizer.step()
 
 
@@ -264,7 +273,7 @@ for i_episode in range(num_episodes):
             target_net.load_state_dict(policy_net.state_dict())
     average_reward = evaluate_episode(episode_record)
     print("episode:", i_episode, 'average reward:', average_reward)
-    torch.save(target_net.state_dict(),saving_folder+'/net_params_%d.pkl'%(i_episode)) ## TODO: make more flexible model saving
+    torch.save(target_net.state_dict(),saving_folder+'/net_params_%d.pkl'%(i_episode)) 
 
 print('Complete')
 
