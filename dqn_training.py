@@ -20,7 +20,7 @@ parser.add_argument('--epsilon_start', action='store', default=0.5, type=float, 
 parser.add_argument('--epsilon_end', action='store', default=0.001, type=float, help='exploration rate at end of the training, default is 0.001')
 parser.add_argument('--epsilon_decay', action='store', default=100000, type=int, help='number of steps that epsilon reaches epsilon_end, default is 100,000')
 parser.add_argument('--target_update', action='store', default=3000, type=int, help='number of steps for targets to update, default is 2')
-parser.add_argument('--gamma', action='store', default=0.99, type=float, help='reward decay factor, default is 0.99')
+parser.add_argument('--gamma', action='store', default=0.9, type=float, help='reward decay factor, default is 0.99')
 parser.add_argument('--model_name', action='store', default='DRL', type=str, help='the name of the run, default is DQN')
 parser.add_argument('--replay_memory_size', action='store', default=200000, type=int, help='memory replay buffer size')
 parser.add_argument('--batch_size', action='store', default=32, type=int, help='mini batch size')
