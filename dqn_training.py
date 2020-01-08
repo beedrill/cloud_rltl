@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from dqn_evaluation import evaluate
 from utils import DQN, ReplayMemory, Transition, evaluate_episode, create_saving_folder
 
 #################parsing arguments#####################################
@@ -24,6 +25,7 @@ parser.add_argument('--gamma', action='store', default=0.9, type=float, help='re
 parser.add_argument('--model_name', action='store', default='DRL', type=str, help='the name of the run, default is DQN')
 parser.add_argument('--replay_memory_size', action='store', default=200000, type=int, help='memory replay buffer size')
 parser.add_argument('--batch_size', action='store', default=32, type=int, help='mini batch size')
+parser.add_argument('--evaluation_gap', action = 'store', default = 3, type = int, help = 'how many episode to evaluate')
 cmd_args = parser.parse_args()
 #######################################################################
 
@@ -39,6 +41,7 @@ if cmd_args.no_normalize_reward:
   args['normalize_reward'] = False
 env = gym.make('TrafficLight-v0')
 env = TrafficParameterSetWrapper(env, args)
+env = env.unwrapped
 
 
 # env = gym.make('CartPole-v0').unwrapped
@@ -100,6 +103,7 @@ EPS_START = cmd_args.epsilon_start
 EPS_END = cmd_args.epsilon_end
 EPS_DECAY = cmd_args.epsilon_decay
 TARGET_UPDATE = cmd_args.target_update
+EVALUATION_GAP = cmd_args.evaluation_gap
 
 # Get screen size so that we can initialize layers correctly based on shape
 # returned from AI gym. Typical dimensions at this point are close to 3x40x90
@@ -274,6 +278,9 @@ for i_episode in range(num_episodes):
     average_reward = evaluate_episode(episode_record)
     print("episode:", i_episode, 'average reward:', average_reward)
     torch.save(target_net.state_dict(),saving_folder+'/net_params_%d.pkl'%(i_episode)) 
+    if i_episode%EVALUATION_GAP == 0:
+        waiting_times = evaluate(target_net, env, device = device)
+        print ('average waiting time: ', waiting_times[0])
 
 print('Complete')
 

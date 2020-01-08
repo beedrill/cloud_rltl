@@ -18,6 +18,16 @@ import gym_trafficlight
 from gym_trafficlight.trafficenvs import TrafficEnv
 from gym_trafficlight.wrappers import  TrafficParameterSetWrapper
 args = TrafficEnv.get_default_init_parameters()
+def evaluate(network, env, device=None, total_step = 2999):
+  if not device:
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+  # return the waiting time of a policy network on a certain env
+  next_state = env.reset()
+  for _ in range(0, total_step):
+    actions = network(torch.tensor(next_state).to(device))
+    action = actions.max(1)[1].view(1, 1)
+    next_state, reward, terminal, _ = env.step([action.item()])
+  return env.get_waiting_time()
 
 if __name__ == '__main__':
 
@@ -43,7 +53,7 @@ if __name__ == '__main__':
   while itr < 3000:
     itr += 1
     actions = target_net(torch.tensor(next_state))
-    print (actions)
+    #print (actions)
     action = actions.max(1)[1].view(1, 1)
     # print(action)
     next_state, reward, terminal, _ = env.step([action.item()])
