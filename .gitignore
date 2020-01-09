@@ -4,5 +4,8 @@ params/*
 # exception to the rule
 !params/.gitkeep 
 
-#python
+# python
 *.pyc
+
+# pycharm
+.idea/*
