@@ -26,7 +26,7 @@ parser.add_argument('--model_name', action='store', default='DRL', type=str, hel
 parser.add_argument('--replay_memory_size', action='store', default=200000, type=int, help='memory replay buffer size')
 parser.add_argument('--batch_size', action='store', default=32, type=int, help='mini batch size')
 parser.add_argument('--evaluation_gap', action = 'store', default = 3, type = int, help = 'how many episode to evaluate')
-# parser.add_argument('--delay_time', action = 'store', default = 3, type = int, help = 'specify the delay time')
+parser.add_argument('--delay_time', action = 'store', default = 0, type = int, help = 'specify the delay time')
 cmd_args = parser.parse_args()
 #######################################################################
 
@@ -105,7 +105,7 @@ EPS_END = cmd_args.epsilon_end
 EPS_DECAY = cmd_args.epsilon_decay
 TARGET_UPDATE = cmd_args.target_update
 EVALUATION_GAP = cmd_args.evaluation_gap
-DELAY_TIME = 3
+DELAY_TIME = cmd_args.delay_time
 
 # Get screen size so that we can initialize layers correctly based on shape
 # returned from AI gym. Typical dimensions at this point are close to 3x40x90
@@ -136,34 +136,42 @@ def select_action(state, buffered_action):
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
         math.exp(-1. * steps_done / EPS_DECAY)
     # steps_done += 1
-    flag = False
-    # Calculate buffered action
-    if buffered_action[0] == -1:
-        flag = True
-        # print("Initialization exception")
-        for i in range(DELAY_TIME):
-            # actions = policy_net(state)
-            actions = policy_net(torch.tensor(state))
-            action = actions.max(1)[1].view(1, 1)
-            state, reward, terminal, _ = env.step(action)
-            if i == 0:
-                first_action = action
-            else:
-                buffered_action[i-1] = action
+    if len(buffered_action) == 0:
+        delay_flag = False
     else:
-        first_action = buffered_action[0]
-        for i in range(DELAY_TIME):
-            state, reward, terminal, _ = env.step([buffered_action[i]])
-    # print (actions)
-    actions = policy_net(torch.tensor(state))
-    action = actions.max(1)[1].view(1, 1)
-    if flag:
-        buffered_action[-1] = action
-        # print("buffered action")
-        # print(buffered_action)
-    else:
-        buffered_action = torch.cat((torch.tensor(buffered_action[1:]), torch.tensor([action])), 0)
+        delay_flag = True
 
+    if delay_flag:
+        flag = False
+        # Calculate buffered action
+        if buffered_action[0] == -1:
+            flag = True
+            # print("Initialization exception")
+            for i in range(DELAY_TIME):
+                # actions = policy_net(state)
+                actions = policy_net(torch.tensor(state))
+                action = actions.max(1)[1].view(1, 1)
+                state, reward, terminal, _ = env.step(action)
+                if i == 0:
+                    first_action = action
+                else:
+                    buffered_action[i-1] = action
+        else:
+            first_action = buffered_action[0]
+            for i in range(DELAY_TIME):
+                state, reward, terminal, _ = env.step([buffered_action[i]])
+        # print (actions)
+        actions = policy_net(torch.tensor(state))
+        action = actions.max(1)[1].view(1, 1)
+        if flag:
+            buffered_action[-1] = action
+            # print("buffered action")
+            # print(buffered_action)
+        else:
+            buffered_action = torch.cat((torch.tensor(buffered_action[1:]), torch.tensor([action])), 0)
+    else:
+        actions = policy_net(torch.tensor(state))
+        first_action = actions.max(1)[1].view(1, 1)
     if sample > eps_threshold:
         with torch.no_grad():
             # t.max(1) will return largest column value of each row.
@@ -172,6 +180,8 @@ def select_action(state, buffered_action):
             return torch.tensor(first_action), buffered_action
     else:
         return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long), buffered_action
+
+
 
 
 episode_durations = []
@@ -299,10 +309,10 @@ for i_episode in range(num_episodes):
         state = next_state
         # Perform one step of the optimization (on the target network)
         optimize_model()
-        # if terminal:
-        #     print('terminal')
-        #     episode_durations.append(t + 1)
-        #     break
+        if terminal:
+            print('terminal',t)
+            episode_durations.append(t + 1)
+            break
         # Update the target network, copying all weights and biases in DQN
         if steps_done % TARGET_UPDATE == 0:
             target_net.load_state_dict(policy_net.state_dict())
