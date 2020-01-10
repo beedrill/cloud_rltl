@@ -8,4 +8,4 @@ params/*
 *.pyc
 
 # pycharm
-.idea/*
+.idea/*.xml
