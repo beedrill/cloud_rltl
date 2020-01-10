@@ -26,6 +26,7 @@ parser.add_argument('--model_name', action='store', default='DRL', type=str, hel
 parser.add_argument('--replay_memory_size', action='store', default=200000, type=int, help='memory replay buffer size')
 parser.add_argument('--batch_size', action='store', default=32, type=int, help='mini batch size')
 parser.add_argument('--evaluation_gap', action = 'store', default = 3, type = int, help = 'how many episode to evaluate')
+# parser.add_argument('--delay_time', action = 'store', default = 3, type = int, help = 'specify the delay time')
 cmd_args = parser.parse_args()
 #######################################################################
 
@@ -104,6 +105,7 @@ EPS_END = cmd_args.epsilon_end
 EPS_DECAY = cmd_args.epsilon_decay
 TARGET_UPDATE = cmd_args.target_update
 EVALUATION_GAP = cmd_args.evaluation_gap
+DELAY_TIME = 3
 
 # Get screen size so that we can initialize layers correctly based on shape
 # returned from AI gym. Typical dimensions at this point are close to 3x40x90
@@ -128,22 +130,48 @@ memory = ReplayMemory(cmd_args.replay_memory_size)
 steps_done = 0
 
 
-def select_action(state):
+def select_action(state, buffered_action):
     global steps_done
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
         math.exp(-1. * steps_done / EPS_DECAY)
     # steps_done += 1
+    flag = False
+    # Calculate buffered action
+    if buffered_action[0] == -1:
+        flag = True
+        # print("Initialization exception")
+        for i in range(DELAY_TIME):
+            # actions = policy_net(state)
+            actions = policy_net(torch.tensor(state))
+            action = actions.max(1)[1].view(1, 1)
+            state, reward, terminal, _ = env.step(action)
+            if i == 0:
+                first_action = action
+            else:
+                buffered_action[i-1] = action
+    else:
+        first_action = buffered_action[0]
+        for i in range(DELAY_TIME):
+            state, reward, terminal, _ = env.step([buffered_action[i]])
+    # print (actions)
+    actions = policy_net(torch.tensor(state))
+    action = actions.max(1)[1].view(1, 1)
+    if flag:
+        buffered_action[-1] = action
+        # print("buffered action")
+        # print(buffered_action)
+    else:
+        buffered_action = torch.cat((torch.tensor(buffered_action[1:]), torch.tensor([action])), 0)
+
     if sample > eps_threshold:
         with torch.no_grad():
             # t.max(1) will return largest column value of each row.
             # second column on max result is index of where max element was
             # found, so we pick action with the larger expected reward.
-            actions = policy_net(state)
-            # print (actions)
-            return actions.max(1)[1].view(1, 1)
+            return torch.tensor(first_action), buffered_action
     else:
-        return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long)
+        return torch.tensor([[random.randrange(n_actions)]], device=device, dtype=torch.long), buffered_action
 
 
 episode_durations = []
@@ -189,16 +217,17 @@ def optimize_model():
     #print("non_final_next_states shape", non_final_next_states.shape)
     # (batch_size, state_h, state_w)
     state_batch  = torch.cat(batch.state).to(device)
+    # print(batch.action)
     action_batch = torch.cat(batch.action).to(device)
     reward_batch = torch.cat(batch.reward).to(device)
     #print("reward batch:", reward_batch.shape)
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
-    #print("state batch shape:",state_batch.shape)
-    #print("action_batch:", action_batch)
-    #print("unsqueeze:",action_batch.unsqueeze(1))
-    state_action_values = policy_net(state_batch).gather(1, action_batch.unsqueeze(1))
+    # print("state batch shape:",state_batch.shape)
+    # print("action_batch:", action_batch)
+    # print("unsqueeze:",action_batch.unsqueeze(1).shape)
+    state_action_values = policy_net(state_batch).gather(1, action_batch.unsqueeze(1).view(BATCH_SIZE,1))
     #print("state action values:",state_action_values)
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
@@ -247,31 +276,33 @@ state = env.reset()
 
 for i_episode in range(num_episodes):
     # Initialize the environment and state
-    env.reset()
-    
+    state = env.reset()
+    buffered_action = torch.tensor([-1] * DELAY_TIME)
     episode_record = [] # use this to record temporarily for one episode
     # for t in count():
     for t in range(2999):
         steps_done += 1
         # Select and perform an action
         # print(state.shape)
-        action = select_action(torch.tensor(state).to(device))
-        # print(action.item())
-        next_state, reward, terminal, _ = env.step([action.item()])
+        action, buffered_action = select_action(torch.tensor(state).to(device), buffered_action)
+        # print(buffered_action)
+        next_state, reward, terminal, _ = env.step([action])
         episode_record.append((next_state, reward))
         # print(next_state.shape)
         reward = torch.tensor([reward], device=device)
         # Store the transition in memory
-        memory.push(torch.tensor([state]), torch.tensor([action]), torch.tensor([next_state]), reward)
+        # print("push action %s"%buffered_action[0])
+        # print(cur_action)
+        memory.push(torch.tensor([state]), torch.tensor(action.view(1,1)), torch.tensor([next_state]), reward)
         # print("reward",reward)
         # Move to the next state
         state = next_state
         # Perform one step of the optimization (on the target network)
         optimize_model()
-        if terminal:
-            print('terminal')
-            episode_durations.append(t + 1)
-            break
+        # if terminal:
+        #     print('terminal')
+        #     episode_durations.append(t + 1)
+        #     break
         # Update the target network, copying all weights and biases in DQN
         if steps_done % TARGET_UPDATE == 0:
             target_net.load_state_dict(policy_net.state_dict())
