@@ -253,7 +253,7 @@ def optimize_model():
     #print("expected state action values:",expected_state_action_values)
     #print("expected state action values size:", expected_state_action_values.unsqueeze(1)[:,:,0].shape)
     # Compute Huber loss
-    loss = F.smooth_l1_loss(state_action_values.view(BATCH_SIZE,1), expected_state_action_values.unsqueeze(1).view(BATCH_SIZE,1).float())
+    loss = F.smooth_l1_loss(state_action_values.view(BATCH_SIZE,1), expected_state_action_values.unsqueeze(1).view(BATCH_SIZE,1).float()).to(device)
     #print("loss",loss)
     #input('press to continue')
     # Optimize the model
