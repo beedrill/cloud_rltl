@@ -309,10 +309,10 @@ for i_episode in range(num_episodes):
         state = next_state
         # Perform one step of the optimization (on the target network)
         optimize_model()
-        if terminal:
-            print('terminal',t)
-            episode_durations.append(t + 1)
-            break
+        # if terminal:
+        #     print('terminal',t)
+        #     episode_durations.append(t + 1)
+        #     break
         # Update the target network, copying all weights and biases in DQN
         if steps_done % TARGET_UPDATE == 0:
             target_net.load_state_dict(policy_net.state_dict())
