@@ -149,7 +149,7 @@ def select_action(state, buffered_action):
             # print("Initialization exception")
             for i in range(DELAY_TIME):
                 # actions = policy_net(state)
-                actions = policy_net(torch.tensor(state))
+                actions = policy_net(torch.tensor(state).to(device))
                 action = actions.max(1)[1].view(1, 1)
                 state, reward, terminal, _ = env.step(action)
                 if i == 0:
@@ -161,7 +161,7 @@ def select_action(state, buffered_action):
             for i in range(DELAY_TIME):
                 state, reward, terminal, _ = env.step([buffered_action[i]])
         # print (actions)
-        actions = policy_net(torch.tensor(state))
+        actions = policy_net(torch.tensor(state).to(device))
         action = actions.max(1)[1].view(1, 1)
         if flag:
             buffered_action[-1] = action
@@ -170,7 +170,7 @@ def select_action(state, buffered_action):
         else:
             buffered_action = torch.cat((torch.tensor(buffered_action[1:]), torch.tensor([action])), 0)
     else:
-        actions = policy_net(torch.tensor(state))
+        actions = policy_net(torch.tensor(state).to(device))
         first_action = actions.max(1)[1].view(1, 1)
     if sample > eps_threshold:
         with torch.no_grad():
@@ -218,7 +218,7 @@ def optimize_model():
     # print("batch", batch)
     # Compute a mask of non-final states and concatenate the batch elements
     # (a final state would've been the one after which simulation ended)
-    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=device, dtype=torch.bool).to(device)
+    non_final_mask = torch.tensor(tuple(map(lambda s: s is not None, batch.next_state)), device=device, dtype=torch.uint8).to(device)
     
     #print("non_final_mask:",non_final_mask)
     non_final_next_states = torch.cat([s for s in batch.next_state
