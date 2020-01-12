@@ -168,7 +168,7 @@ def select_action(state, buffered_action):
             # print("buffered action")
             # print(buffered_action)
         else:
-            buffered_action = torch.cat((torch.tensor(buffered_action[1:]), torch.tensor([action])), 0)
+            buffered_action = torch.cat((torch.tensor(buffered_action[1:],device=device), torch.tensor([action],device=device)), 0).to(device)
     else:
         actions = policy_net(torch.tensor(state).to(device))
         first_action = actions.max(1)[1].view(1, 1)
@@ -237,7 +237,7 @@ def optimize_model():
     # print("state batch shape:",state_batch.shape)
     # print("action_batch:", action_batch)
     # print("unsqueeze:",action_batch.unsqueeze(1).shape)
-    state_action_values = policy_net(state_batch).gather(1, action_batch.unsqueeze(1).view(BATCH_SIZE,1))
+    state_action_values = policy_net(state_batch.to(device)).gather(1, action_batch.unsqueeze(1).view(BATCH_SIZE,1))
     #print("state action values:",state_action_values)
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
@@ -248,7 +248,7 @@ def optimize_model():
     next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
     #print("next_state_values:", next_state_values.shape)
     # Compute the expected Q values
-    expected_state_action_values = (next_state_values.view(BATCH_SIZE,1) * GAMMA) + reward_batch
+    expected_state_action_values = ((next_state_values.view(BATCH_SIZE,1).type(torch.DoubleTensor).to(device) * GAMMA) + reward_batch)
     #print("state action values size:",state_action_values.shape)
     #print("expected state action values:",expected_state_action_values)
     #print("expected state action values size:", expected_state_action_values.unsqueeze(1)[:,:,0].shape)
@@ -287,7 +287,7 @@ state = env.reset()
 for i_episode in range(num_episodes):
     # Initialize the environment and state
     state = env.reset()
-    buffered_action = torch.tensor([-1] * DELAY_TIME)
+    buffered_action = torch.tensor([-1] * DELAY_TIME).to(device)
     episode_record = [] # use this to record temporarily for one episode
     # for t in count():
     for t in range(2999):
