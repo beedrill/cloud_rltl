@@ -33,11 +33,11 @@ class DQN(nn.Module):
 
     def __init__(self, h, w, outputs):
         super(DQN, self).__init__()
-        self.conv1 = nn.Linear(10,512)
+        self.conv1 = nn.Linear(10,4)
         # self.bn1 = nn.BatchNorm1d(1568)
-        self.conv2 = nn.Linear(512,512)
+        self.conv2 = nn.Linear(4,128)
         # self.bn2 = nn.BatchNorm1d(100)
-        self.conv3 = nn.Linear(512,512)
+        self.conv3 = nn.Linear(128,512)
         # self.bn3 = nn.BatchNorm1d(30)
         self.head  = nn.Linear(512,outputs)
 
