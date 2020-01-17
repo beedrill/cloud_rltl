@@ -34,13 +34,19 @@ import gym
 import gym_trafficlight
 from gym_trafficlight.trafficenvs import TrafficEnv
 from gym_trafficlight.wrappers import  TrafficParameterSetWrapper
-args = TrafficEnv.get_default_init_parameters()
+args = {}
 if cmd_args.visual:
   args['visual'] = True
 args['reward_present_form'] = 'reward' # we use reward as opposed to penalty
 if cmd_args.no_normalize_reward:
   args['normalize_reward'] = False
 env = gym.make('TrafficLight-v0')
+#env = gym.make('TrafficLight-simple-sparse-v0')
+#env = gym.make('TrafficLight-simple-medium-v0')
+#env = gym.make('TrafficLight-simple-dense-v0')
+#env = gym.make('TrafficLight-Lust12408-rush-hour-v0')
+#env = gym.make('TrafficLight-Lust12408-regular-time-v0')
+#env = gym.make('TrafficLight-Lust12408-midnight-v0')
 env = TrafficParameterSetWrapper(env, args)
 env = env.unwrapped
 
