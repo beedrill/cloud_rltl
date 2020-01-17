@@ -42,33 +42,32 @@ args['reward_present_form'] = 'reward' # we use reward as opposed to penalty
 if cmd_args.no_normalize_reward:
   args['normalize_reward'] = False
 
-if cmd_args.env_option <= 6:
-    if cmd_args.env_option == 0:
-        env = gym.make('TrafficLight-v0')
-        env_name = "v0"
-    elif cmd_args.env_option == 1:
-        env = gym.make('TrafficLight-simple-sparse-v0')
-        env_name = "simple_sparse"
-    elif cmd_args.env_option == 2:
-        env = gym.make('TrafficLight-simple-medium-v0')
-        env_name = "simple_medium"
-    elif cmd_args.env_option == 3:
-        env = gym.make('TrafficLight-simple-dense-v0')
-        env_name = "simple_dense"
-    elif cmd_args.env_option == 4:
-        env = gym.make('TrafficLight-Lust12408-rush-hour-v0')
-        env_name = "Lust12408_rush"
-    elif cmd_args.env_option == 5:
-        env = gym.make('TrafficLight-Lust12408-regular-time-v0')
-        env_name = "Lust12408_regular"
-    elif cmd_args.env_option == 6:
-        env = gym.make('TrafficLight-Lust12408-midnight-v0')
-        env_name = "Lust12408_midnight"
-    env = TrafficParameterSetWrapper(env, args)
-    env = env.unwrapped
-elif cmd_args.env_option == 7:
-    env = gym.make('CartPole-v0').unwrapped
+if cmd_args.env_option == 0:
+    env = gym.make('TrafficLight-v0')
+    env_name = "v0"
+elif cmd_args.env_option == 1:
+    env = gym.make('TrafficLight-simple-sparse-v0')
+    env_name = "simple_sparse"
+elif cmd_args.env_option == 2:
+    env = gym.make('TrafficLight-simple-medium-v0')
+    env_name = "simple_medium"
+elif cmd_args.env_option == 3:
+    env = gym.make('TrafficLight-simple-dense-v0')
+    env_name = "simple_dense"
+elif cmd_args.env_option == 4:
+    env = gym.make('TrafficLight-Lust12408-rush-hour-v0')
+    env_name = "Lust12408_rush"
+elif cmd_args.env_option == 5:
+    env = gym.make('TrafficLight-Lust12408-regular-time-v0')
+    env_name = "Lust12408_regular"
+elif cmd_args.env_option == 6:
+    env = gym.make('TrafficLight-Lust12408-midnight-v0')
     env_name = "Lust12408_midnight"
+
+env = TrafficParameterSetWrapper(env, args)
+env = env.unwrapped
+
+# env = gym.make('CartPole-v0').unwrapped
 
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
