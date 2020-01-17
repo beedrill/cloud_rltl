@@ -27,6 +27,7 @@ parser.add_argument('--replay_memory_size', action='store', default=200000, type
 parser.add_argument('--batch_size', action='store', default=32, type=int, help='mini batch size')
 parser.add_argument('--evaluation_gap', action = 'store', default = 3, type = int, help = 'how many episode to evaluate')
 parser.add_argument('--delay_time', action = 'store', default = 0, type = int, help = 'specify the delay time')
+parser.add_argument('--env_option', action = 'store', default = 0, type = int, help = 'specify the environment')
 cmd_args = parser.parse_args()
 #######################################################################
 
@@ -40,16 +41,33 @@ if cmd_args.visual:
 args['reward_present_form'] = 'reward' # we use reward as opposed to penalty
 if cmd_args.no_normalize_reward:
   args['normalize_reward'] = False
-env = gym.make('TrafficLight-v0')
-#env = gym.make('TrafficLight-simple-sparse-v0')
-#env = gym.make('TrafficLight-simple-medium-v0')
-#env = gym.make('TrafficLight-simple-dense-v0')
-#env = gym.make('TrafficLight-Lust12408-rush-hour-v0')
-#env = gym.make('TrafficLight-Lust12408-regular-time-v0')
-#env = gym.make('TrafficLight-Lust12408-midnight-v0')
+
+if cmd_args.env_option == 0:
+    env = gym.make('TrafficLight-v0')
+    env_name = "v0"
+elif cmd_args.env_option == 1:
+    env = gym.make('TrafficLight-simple-sparse-v0')
+    env_name = "simple_sparse"
+elif cmd_args.env_option == 2:
+    env = gym.make('TrafficLight-simple-medium-v0')
+    env_name = "simple_medium"
+elif cmd_args.env_option == 3:
+    env = gym.make('TrafficLight-simple-dense-v0')
+    env_name = "simple_dense"
+elif cmd_args.env_option == 4:
+    env = gym.make('TrafficLight-Lust12408-rush-hour-v0')
+    env_name = "Lust12408_rush"
+elif cmd_args.env_option == 5:
+    env = gym.make('TrafficLight-Lust12408-regular-time-v0')
+    env_name = "Lust12408_regular"
+elif cmd_args.env_option == 6:
+    env = gym.make('TrafficLight-Lust12408-midnight-v0')
+    env_name = "Lust12408_midnight"
+elif cmd_args.env_option == 7:
+    env = gym.make('CartPole-v0')
+    env_name = "Lust12408_midnight"
 env = TrafficParameterSetWrapper(env, args)
 env = env.unwrapped
-
 
 # env = gym.make('CartPole-v0').unwrapped
 
@@ -78,8 +96,8 @@ print('checking device... the computation device used in the training is: ' + st
 #    method for selecting a random batch of transitions for training.
 #
 
-
-saving_folder = create_saving_folder(cmd_args.model_name, cmd_args)
+saving_name   = cmd_args.model_name + '_' + env_name + '_' + cmd_args.delay_time
+saving_folder = create_saving_folder(saving_name, cmd_args)
 env.reset()
 
 ######################################################################
