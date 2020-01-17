@@ -96,7 +96,7 @@ print('checking device... the computation device used in the training is: ' + st
 #    method for selecting a random batch of transitions for training.
 #
 
-saving_name   = cmd_args.model_name + '_' + env_name + '_' + cmd_args.delay_time
+saving_name   = cmd_args.model_name + '_' + env_name + '_' + 'delay_time' + str(cmd_args.delay_time)
 saving_folder = create_saving_folder(saving_name, cmd_args)
 env.reset()
 
