@@ -18,7 +18,8 @@ import gym_trafficlight
 from gym_trafficlight.trafficenvs import TrafficEnv
 from gym_trafficlight.wrappers import TrafficParameterSetWrapper
 
-args = TrafficEnv.get_default_init_parameters()
+#args = TrafficEnv.get_default_init_parameters()
+args = {}
 
 if __name__ == '__main__':
 
@@ -30,7 +31,12 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # print(args)
     env = gym.make('TrafficLight-v0')
-
+    #env = gym.make('TrafficLight-simple-sparse-v0')
+    #env = gym.make('TrafficLight-simple-medium-v0')
+    #env = gym.make('TrafficLight-simple-dense-v0')
+    #env = gym.make('TrafficLight-Lust12408-rush-hour-v0')
+    #env = gym.make('TrafficLight-Lust12408-regular-time-v0')
+    #env = gym.make('TrafficLight-Lust12408-midnight-v0')
     if cmd_args.visual:
         args['visual'] = True
     env = TrafficParameterSetWrapper(env, args)
