@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Run Q learning for cloud rltl')
     parser.add_argument('--visual', action='store_true', help='use visualization')
-    parser.add_argument('--folder_name', action='store', type=str, help='path of the model parameter')
+    # parser.add_argument('--folder_name', action='store', type=str, help='path of the model parameter')
     parser.add_argument('--delay_time', action = 'store', default = 0, type = int, help = 'specify the delay time')
     parser.add_argument('--env_option', action='store', default=0, type=int, help='specify the environment')
     cmd_args = parser.parse_args()
