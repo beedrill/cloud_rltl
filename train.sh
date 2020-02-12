@@ -1,4 +1,5 @@
 #!/bin/bash
+<<<<<<< HEAD
 POSITIONAL=()
 while [[ $# -gt 0 ]]
 do
@@ -83,3 +84,4 @@ do
         python3 dqn_training.py --delay $delay --no_counter --model_saving_path ${EXPERIMENT}/${ENV_NAME}_delay_$delay --env_name ${ENV_NAME}
     fi
 done
+
