@@ -1,5 +1,6 @@
 # exclude everything
 params/*
+training_log/*
 
 # exception to the rule
 !params/.gitkeep 

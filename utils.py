@@ -60,17 +60,23 @@ def evaluate_episode (episode_record):
         return 0
     return sum(reward_list)/len(reward_list)
 
-def get_first_usable_name (model_name):
+def get_first_usable_name (path):
     # increase index until the first unused name
     i = 1
-    while os.path.exists('params/{}_{}'.format(model_name, i)):
+    while os.path.exists('params/{}_{}'.format(path, i)):
         i += 1
-    return 'params/{}_{}'.format(model_name, i)
+    return 'params/{}_{}'.format(path, i)
 
 def create_saving_folder (model_name, cmd_args):
     # this function will create the folder of interesting
     # return the name of folder created
-    folder = get_first_usable_name( model_name )
+    path = model_name
+    if cmd_args.model_saving_path:
+        path = cmd_args.model_saving_path
+    if cmd_args.no_counter:
+        folder = 'params/{}'.format(path)
+    else:
+        folder = get_first_usable_name( path )
     os.mkdir(folder)
     with open(folder+'/args.txt', 'w') as f:
         json.dump(cmd_args.__dict__, f, indent=2)

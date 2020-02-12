@@ -17,33 +17,33 @@ To cite this repo for publication:
 
 ```
 # training : 
-python dqn_training.py --delay_time $DELAY_TIME --env_option $ENV_OPTION
+python dqn_training.py --delay $DELAY_TIME --env_name $ENV_NAME
 
 
 # evaluation :
 # Used for evaluation for one network and visualization for SUMO
-python dqn_evaluation.py --visual
+python3 dqn_evaluation.py --filename MODELPATH  --delay DELAYTIME --env_name ENV_NAME --n_trials NUMBEROFTRIALS --saving_file SAVINGPATH
 
-# evaluation2 :
-# Used for finding the best network and its average waiting time. 
-python dqn_evaluation2.py --delay_time 1 --env_option $ENV_OPTION
 
-# train.sh
+
+# to perform a experiment for multiple delays
 # Need to specify the train_index, env_option and delay_time parameter in train.sh
-sh train.sh
+bash train.sh --n SOMENAME ----env 0 
 
-# evaluate.sh
-# Need to specify the evaluate_index, env_option and delay_time parameter in evaluate.sh
-sh evaluate.sh
+#here are the env options:
 
                                             env_option
-'TrafficLight-v0'                               0
-'TrafficLight-simple-sparse-v0'                 1
-'TrafficLight-simple-medium-v0'                 2
-'TrafficLight-simple-dense-v0'                  3
-'TrafficLight-Lust12408-rush-hour-v0'           4
-'TrafficLight-Lust12408-regular-time-v0'        5
-'TrafficLight-Lust12408-midnight-v0'            6
+'TrafficLight-simple-sparse-v0'                 0
+'TrafficLight-simple-medium-v0'                 1
+'TrafficLight-simple-dense-v0'                  2
+'TrafficLight-Lust12408-rush-hour-v0'           3
+'TrafficLight-Lust12408-regular-time-v0'        4
+'TrafficLight-Lust12408-midnight-v0'            5
+
+# To evaluate the experiment
+python3 evaluate_experiment.py -p experiment_path
+
+
 ```
 
 The trained model's parameters is saved in the folder '/params'
